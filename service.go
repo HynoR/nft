@@ -174,12 +174,12 @@ func (s *NatService) InitEnv() *NatService {
 	}
 
 	// Enable IP forwarding
-	if err := os.WriteFile(ipForward, []byte("1"), 0644); err != nil {
-		slog.Error("Failed to enable ip_forward", "error", err, "message", "Please execute 'echo 1 > /proc/sys/net/ipv4/ip_forward' manually")
-		return s
-	} else {
-		slog.Info("Kernel ip_forward config enabled!")
-	}
+	// if err := os.WriteFile(ipForward, []byte("1"), 0644); err != nil {
+	// 	slog.Error("Failed to enable ip_forward", "error", err, "message", "Please execute 'echo 1 > /proc/sys/net/ipv4/ip_forward' manually")
+	// 	return s
+	// } else {
+	// 	slog.Info("Kernel ip_forward config enabled!")
+	// }
 
 	return s
 }
