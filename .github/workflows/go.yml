@@ -2,11 +2,8 @@ name: Go
 
 on:
   push:
-    branches: [ "main" ]
     tags:
-      - 'v*'  # 添加 tag 触发器
-  pull_request:
-    branches: [ "main" ]
+      - 'v*'  # Only trigger on version tags
 
 jobs:
   build:
