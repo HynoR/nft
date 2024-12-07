@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	configPath string
-	testMode   bool
+	configPath  string
+	testMode    bool
+	convertMode string
+	globalIp    string
 )
 
 func useLogger(path string) {
@@ -29,6 +31,8 @@ func main() {
 
 	flag.StringVar(&configPath, "c", "nat.conf", "path to configuration file")
 	flag.BoolVar(&testMode, "t", false, "run in test mode")
+	flag.StringVar(&convertMode, "convert", "", "convert iptables rules to nftables rules")
+	flag.StringVar(&globalIp, "ip", "", "global ip address")
 	flag.Parse()
 
 	if configPath == "nat.conf" {
@@ -39,9 +43,18 @@ func main() {
 	// Create new Service
 	service := NewNatService()
 
+	if globalIp != "" {
+		service.GlobalLocalIP = globalIp
+	}
+
 	if testMode {
 		service.TestMode = true
 		slog.Info("Running in test mode")
+	}
+	if convertMode != "" {
+		slog.Info("Running in convert mode", "convert", convertMode)
+		service.ConvertTask(configPath, convertMode)
+		return
 	}
 	service.InitEnv().AddConfig(configPath).Run()
 }

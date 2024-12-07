@@ -72,6 +72,17 @@ type NatCell struct {
 	Content   string
 }
 
+func (n *NatCell) String() string {
+	switch n.Type {
+	case "Range":
+		return fmt.Sprintf("Range(%d-%d, %s, %s, %v)", n.PortStart, n.PortEnd, n.DstDomain, n.DstIP, n.Protocol)
+	case "Single":
+		return fmt.Sprintf("Single(%d-%d, %s, %s, %v)", n.SrcPort, n.DstPort, n.DstDomain, n.DstIP, n.Protocol)
+	default:
+		return n.Content
+	}
+}
+
 func (n *NatCell) Build() string {
 	if n.Type == "Comment" {
 		return n.Content
@@ -130,7 +141,10 @@ func ReadConfig(conf string) []NatCell {
 	}
 
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
-
+	natCells = append(natCells, NatCell{
+		Type:    "Comment",
+		Content: "# ------- File: " + conf + " -------\n",
+	})
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -184,6 +198,10 @@ func ReadConfig(conf string) []NatCell {
 
 		}
 	}
+	natCells = append(natCells, NatCell{
+		Type:    "Comment",
+		Content: "# ------- End -------\n",
+	})
 
 	return natCells
 }

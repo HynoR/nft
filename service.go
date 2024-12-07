@@ -14,12 +14,14 @@ import (
 )
 
 type NatService struct {
-	watcher      *fsnotify.Watcher
-	domainMap    map[string]string
-	mux          sync.RWMutex
-	latestScript string
-	configPath   []string
-	TestMode     bool // testMode Only Generate nat script but not apply
+	watcher       *fsnotify.Watcher
+	domainMap     map[string]string
+	mux           sync.RWMutex
+	latestScript  string
+	configPath    []string
+	TestMode      bool // testMode Only Generate nat script but not apply
+	ConvertMode   bool // convertMode Only Convert iptables rules to nftables rules
+	GlobalLocalIP string
 }
 
 func NewNatService() *NatService {
@@ -35,6 +37,29 @@ func NewNatService() *NatService {
 		domainMap:    make(map[string]string),
 		latestScript: "",
 	}
+
+}
+
+// ConvertTask
+func (s *NatService) ConvertTask(path string, convertPath string) {
+	s.ConvertMode = true
+	s.TestMode = true
+	s.AddConfig(path)
+	var netcells []NatCell
+	for _, path := range s.configPath {
+		slog.Info("Read config file", "path", path)
+		netcells = append(netcells, ReadConfig(path)...)
+	}
+	slog.Info("Read config file Done", "total", len(netcells))
+	script := s.GenerateScript(netcells)
+	slog.Info("Convert iptables rules to nftables rules", "path", convertPath)
+	// 写入 ConvertPath
+
+	if err := os.WriteFile(convertPath, []byte(script), 0644); err != nil {
+		slog.Error("Failed to write script", "error", err)
+		return
+	}
+	slog.Info("Convert iptables rules to nftables rules Done", "path", convertPath)
 
 }
 
@@ -65,10 +90,13 @@ func (s *NatService) AddConfig(path string) *NatService {
 }
 
 func (s *NatService) AddSingleConfig(path string) {
-	if err := s.watcher.Add(path); err != nil {
-		slog.Error("Failed to add watcher", "error", err)
+	if !s.ConvertMode {
+		if err := s.watcher.Add(path); err != nil {
+			slog.Error("Failed to add watcher", "error", err)
+		}
 	}
 	s.configPath = append(s.configPath, path)
+	slog.Info("Added config file", "path", path)
 }
 
 func (s *NatService) RefreshDomainMap() {
@@ -157,18 +185,24 @@ func (s *NatService) InitEnv() *NatService {
 }
 
 func (s *NatService) GenerateScript(config []NatCell) string {
-	localIP := os.Getenv("nat_local_ip")
+	var localIP string
+	localIP = s.GlobalLocalIP
 	if localIP == "" {
-		var err error
-		localIP, err = getLocalIP()
-		if err != nil {
-			return ""
+		localIP = os.Getenv("nat_local_ip")
+		if localIP == "" {
+			var err error
+			localIP, err = getLocalIP()
+			if err != nil {
+				slog.Error("Failed to get local IP", "error", err)
+				return ""
+			}
 		}
 	}
 	script := scriptPrefix
 	for _, entry := range config {
 		entry.LocalIP = localIP
 		entry.DstIP = s.parseEntryDomain(entry)
+		slog.Debug("Generate Entry", "entry", entry)
 		script += entry.Build()
 	}
 	return script
@@ -180,9 +214,11 @@ func (s *NatService) parseEntryDomain(entry NatCell) string {
 	}
 	s.mux.RLock()
 	if ip, ok := s.domainMap[entry.DstDomain]; ok && ip != "" {
+		s.mux.RUnlock()
 		return ip
 	}
 	s.mux.RUnlock()
+
 	ip, err := getRemoteIP(entry.DstDomain)
 	if err != nil {
 		slog.Error("Failed to resolve domain", "domain", entry.DstDomain, "error", err)
