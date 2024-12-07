@@ -36,6 +36,8 @@ jobs:
     - name: Upload release asset
       uses: ncipollo/release-action@v1
       with:
-        files: |
+        tag: 'v1-latest'  # 你需要根据实际情况设置标签
+        name: 'Release v1-latest'
+        artifacts: |
           nat-go-amd64
           nat-go-arm64
