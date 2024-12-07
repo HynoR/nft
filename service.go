@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -14,14 +15,15 @@ import (
 )
 
 type NatService struct {
-	watcher       *fsnotify.Watcher
-	domainMap     map[string]string
-	mux           sync.RWMutex
-	latestScript  string
-	configPath    []string
-	TestMode      bool // testMode Only Generate nat script but not apply
-	ConvertMode   bool // convertMode Only Convert iptables rules to nftables rules
-	GlobalLocalIP string
+	watcher        *fsnotify.Watcher
+	domainMap      map[string]string
+	mux            sync.RWMutex
+	latestScript   string
+	configPath     []string
+	TestMode       bool // testMode Only Generate nat script but not apply
+	ConvertMode    bool // convertMode Only Convert iptables rules to nftables rules
+	GlobalLocalIP  string
+	needSyncSignal chan struct{}
 }
 
 func NewNatService() *NatService {
@@ -33,9 +35,10 @@ func NewNatService() *NatService {
 	defer watcher.Close()
 
 	return &NatService{
-		watcher:      watcher,
-		domainMap:    make(map[string]string),
-		latestScript: "",
+		watcher:        watcher,
+		domainMap:      make(map[string]string),
+		latestScript:   "",
+		needSyncSignal: make(chan struct{}),
 	}
 
 }
@@ -105,18 +108,28 @@ func (s *NatService) RefreshDomainMap() {
 	if len(s.domainMap) == 0 {
 		return
 	}
-	var err error
 	var refreshSuccessNum int
+	var needSync bool
 	for str := range s.domainMap {
-		s.domainMap[str], err = getRemoteIP(str)
+		ip, err := getRemoteIP(str)
 		if err != nil {
 			slog.Error("Failed to resolve domain", "domain", str, "error", err)
 			continue
 		}
+		if ip == s.domainMap[str] {
+			continue
+		} else {
+			needSync = true
+			s.domainMap[str] = ip
+		}
+
 		refreshSuccessNum++
 	}
 
 	slog.Info("Refresh domain map Done", "total", len(s.domainMap), "success", refreshSuccessNum)
+	if needSync {
+		s.Sync()
+	}
 }
 
 func (s *NatService) CleanMap() {
@@ -125,17 +138,45 @@ func (s *NatService) CleanMap() {
 	s.domainMap = make(map[string]string)
 }
 
-func (s *NatService) Run() {
-	s.Sync()
+func (s *NatService) RefreshDomainMapTask() {
+	for {
+		s.RefreshDomainMap()
+		// Refresh every 1 minutes  |||  todo configurable
+		<-time.After(1 * time.Minute)
+	}
+}
 
-	go func() {
+func (s *NatService) CleanAndSyncTask() {
+	const waitDuration = 60 * time.Second
+
+	for {
+		// 等待第一个同步信号
+		<-s.needSyncSignal
+		slog.Info("Received sync signal, waiting for cool down period")
+
+		// 创建计时器
+		timer := time.NewTimer(waitDuration)
+		defer timer.Stop()
+
+		// 在等待期间收集所有同步信号
+	waitLoop:
 		for {
-			s.RefreshDomainMap()
-			// Refresh every 1 minutes  |||  todo configurable
-			<-time.After(1 * time.Minute)
+			select {
+			case <-timer.C:
+				// 冷却期结束，执行同步
+				slog.Info("Cool down period ended, starting sync")
+				s.CleanMap()
+				s.Sync()
+				break waitLoop
+			case <-s.needSyncSignal:
+				// 记录但忽略在冷却期间的同步请求
+				slog.Info("Sync request received during cool down, ignoring")
+			}
 		}
-	}()
-	// Watch for changes
+	}
+}
+
+func (s *NatService) WatchConfig() {
 	for {
 		select {
 		case event, ok := <-s.watcher.Events:
@@ -144,8 +185,7 @@ func (s *NatService) Run() {
 			}
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				slog.Info("Config file modified, Reload Config", "path", event.Name)
-				s.CleanMap()
-				s.Sync()
+				s.needSyncSignal <- struct{}{}
 			}
 		case err, ok := <-s.watcher.Errors:
 			if !ok {
@@ -154,6 +194,49 @@ func (s *NatService) Run() {
 			log.Printf("Watcher error: %v\n", err)
 		}
 	}
+}
+
+func (s *NatService) Run() {
+	// Initial sync
+	s.Sync()
+
+	// Create errChan to handle potential errors from goroutines
+	errChan := make(chan error)
+
+	// Start tasks with error handling
+	go func() {
+		if err := s.safeGo(s.RefreshDomainMapTask); err != nil {
+			errChan <- fmt.Errorf("RefreshDomainMapTask error: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := s.safeGo(s.CleanAndSyncTask); err != nil {
+			errChan <- fmt.Errorf("CleanAndSyncTask error: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := s.safeGo(s.WatchConfig); err != nil {
+			errChan <- fmt.Errorf("WatchConfig error: %w", err)
+		}
+	}()
+
+	// Handle errors from goroutines
+	for err := range errChan {
+		slog.Error("Task error", "error", err)
+	}
+}
+
+// safeGo wraps task execution with panic recovery
+func (s *NatService) safeGo(task func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic recovered: %v", r)
+		}
+	}()
+	task()
+	return nil
 }
 
 func (s *NatService) Sync() {
