@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log/slog"
 	"os"
 )
@@ -14,17 +13,17 @@ var (
 	globalIp    string
 )
 
-func useLogger(path string) {
-	logFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		slog.Error("Failed to open log file", "error", err, "path", path)
-		os.Exit(1)
-	}
+// func useLogger(path string) {
+// 	logFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+// 	if err != nil {
+// 		slog.Error("Failed to open log file", "error", err, "path", path)
+// 		os.Exit(1)
+// 	}
 
-	// Create a new logger that writes to both stdout and file
-	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logFile), nil))
-	slog.SetDefault(logger)
-}
+// 	// Create a new logger that writes to both stdout and file
+// 	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logFile), nil))
+// 	slog.SetDefault(logger)
+// }
 
 func main() {
 	// Check command line arguments
