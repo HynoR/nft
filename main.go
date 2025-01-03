@@ -45,6 +45,15 @@ func main() {
 	if globalIp != "" {
 		service.GlobalLocalIP = globalIp
 	}
+	// 读取/opt/nat/env是否存在，如果存在则读取里面的globalIp
+	if _, err := os.Stat("/opt/nat/env"); err == nil {
+		envFile, err := os.ReadFile("/opt/nat/env")
+		if err != nil {
+			slog.Error("Failed to read env file", "error", err)
+		}
+		service.GlobalLocalIP = string(envFile)
+		slog.Info("Read global ip from env file", "ip", service.GlobalLocalIP)
+	}
 
 	if testMode {
 		service.TestMode = true
