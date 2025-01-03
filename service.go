@@ -32,7 +32,6 @@ func NewNatService() *NatService {
 	if err != nil {
 		slog.Error("Failed to create watcher", "error", err)
 	}
-	defer watcher.Close()
 
 	return &NatService{
 		watcher:        watcher,
@@ -197,6 +196,7 @@ func (s *NatService) WatchConfig() {
 }
 
 func (s *NatService) Run() {
+	slog.Info("Starting NAT service", slog.Any("outbound ip", s.GlobalLocalIP))
 	// Initial sync
 	s.Sync()
 
