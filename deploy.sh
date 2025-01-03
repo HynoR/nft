@@ -11,7 +11,7 @@ TMP_DIR=$(mktemp -d)
 cd $TMP_DIR
 
 
-DOWNLOAD_URL="https://github.com/HynoR/nft/releases/download/v1.03b/nat-go-amd64"
+DOWNLOAD_URL="https://github.com/HynoR/nft/releases/download/v1.03c/nat-go-amd64"
 # 下载二进制文件
 echo "正在下载nat-go..."
 curl -L -o nat-go $DOWNLOAD_URL
