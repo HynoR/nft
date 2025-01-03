@@ -124,8 +124,9 @@ func (s *NatService) RefreshDomainMap() {
 		}
 		refreshSuccessNum++
 	}
-	slog.Info("RefreshDomainMap | DomainMap Need update", "total", len(s.domainMap), "success", refreshSuccessNum, "needSync", needSync)
+	slog.Debug("RefreshDomainMap | DomainMap Need update", "total", len(s.domainMap), "success", refreshSuccessNum, "needSync", needSync)
 	if needSync {
+		slog.Info("RefreshDomainMap | Need Sync", "total", len(s.domainMap), "success", refreshSuccessNum)
 		s.Sync()
 	}
 }
