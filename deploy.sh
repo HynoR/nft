@@ -44,11 +44,6 @@ ExecStart=/usr/local/bin/nat-go -c /etc/nat/%i
 Restart=always
 RestartSec=10
 
-# 安全相关设置
-ProtectSystem=full
-ProtectHome=true
-PrivateTmp=true
-NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
