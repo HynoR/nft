@@ -112,7 +112,7 @@ func (s *NatService) RefreshDomainMap() {
 	for str := range s.domainMap {
 		ip, err := getRemoteIP(str)
 		if err != nil {
-			slog.Error("Failed to resolve domain", "domain", str, "error", err)
+			slog.Error("RefreshDomainMap | Failed to resolve domain", "domain", str, "error", err)
 			continue
 		}
 		if ip == s.domainMap[str] {
@@ -120,12 +120,11 @@ func (s *NatService) RefreshDomainMap() {
 		} else {
 			needSync = true
 			s.domainMap[str] = ip
+			slog.Info("RefreshDomainMap | Refresh domain", "domain", str, "ip", ip)
 		}
-
 		refreshSuccessNum++
 	}
-
-	slog.Info("Refresh domain map Done", "total", len(s.domainMap), "success", refreshSuccessNum)
+	slog.Info("RefreshDomainMap | DomainMap Need update", "total", len(s.domainMap), "success", refreshSuccessNum, "needSync", needSync)
 	if needSync {
 		s.Sync()
 	}
