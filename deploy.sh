@@ -6,12 +6,22 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+#!/bin/bash
+
+if command -v nft > /dev/null 2>&1; then
+    echo "nftables 已安装"
+else
+    echo "nftables 未安装"
+    exit 1
+fi
+
+
 # 创建临时目录
 TMP_DIR=$(mktemp -d)
 cd $TMP_DIR
 
 
-DOWNLOAD_URL="https://github.com/HynoR/nft/releases/download/v1.03d/nat-go-amd64"
+DOWNLOAD_URL="https://github.com/HynoR/nft/releases/download/v1.04/nat-go-amd64"
 # 下载二进制文件
 echo "正在下载nat-go..."
 curl -L -o nat-go $DOWNLOAD_URL
@@ -31,16 +41,16 @@ mkdir -p /etc/nat
 touch /etc/nat/.env
 
 # 安装service文件
-cat > /etc/systemd/system/nat-go@.service << 'EOL'
+cat > /etc/systemd/system/nat-go.service << 'EOL'
 [Unit]
-Description=NFTable Forward Manage Service (%i)
+Description=NFTable Forward Manage Service
 After=network.target
 
 [Service]
 Type=simple
 User=root
 EnvironmentFile=/etc/nat/.env
-ExecStart=/usr/local/bin/nat-go -c /etc/nat/%i
+ExecStart=/usr/local/bin/nat-go -c /etc/nat/cfg
 Restart=always
 RestartSec=10
 
@@ -57,6 +67,6 @@ rm -rf $TMP_DIR
 
 echo "安装完成!"
 echo "使用方法:"
-echo "1. 将配置文件放在 /etc/nat/ 目录下"
-echo "2. 启动服务: systemctl start nat-go@<配置文件名>"
-echo "3. 设置开机自启: systemctl enable nat-go@<配置文件名>"
+echo "1. 将配置文件放在 /etc/nat/cfg 目录下"
+echo "2. 启动服务: systemctl start nat-go"
+echo "3. 设置开机自启: systemctl enable nat-go"

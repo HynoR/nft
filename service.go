@@ -103,8 +103,8 @@ func (s *NatService) AddSingleConfig(path string) {
 
 func (s *NatService) RefreshDomainMap() {
 	s.mux.Lock()
-	defer s.mux.Unlock()
 	if len(s.domainMap) == 0 {
+		s.mux.Unlock()
 		return
 	}
 	var refreshSuccessNum int
@@ -125,6 +125,7 @@ func (s *NatService) RefreshDomainMap() {
 		refreshSuccessNum++
 	}
 	slog.Debug("RefreshDomainMap | DomainMap Need update", "total", len(s.domainMap), "success", refreshSuccessNum, "needSync", needSync)
+	s.mux.Unlock()
 	if needSync {
 		slog.Info("RefreshDomainMap | Need Sync", "total", len(s.domainMap), "success", refreshSuccessNum)
 		s.Sync()
@@ -240,12 +241,18 @@ func (s *NatService) safeGo(task func()) (err error) {
 }
 
 func (s *NatService) Sync() {
+	if len(s.configPath) == 0 {
+		slog.Warn("No config file found")
+		return
+
+	}
 	var netcells []NatCell
 	for _, path := range s.configPath {
 		netcells = append(netcells, ReadConfig(path)...)
 	}
-	script := s.GenerateScript(netcells)
-	s.applyScript(script)
+	slog.Debug("Read config file Done")
+	s.applyScript(s.GenerateScript(netcells))
+	slog.Info("Apply nftables script Done", "total", len(netcells))
 
 }
 
@@ -269,11 +276,11 @@ func (s *NatService) InitEnv() *NatService {
 
 func (s *NatService) GenerateScript(config []NatCell) string {
 	var localIP string
+	var err error
 	localIP = s.GlobalLocalIP
 	if localIP == "" {
 		localIP = os.Getenv("nat_local_ip")
 		if localIP == "" {
-			var err error
 			localIP, err = getLocalIP()
 			if err != nil {
 				slog.Error("Failed to get local IP", "error", err)
@@ -314,7 +321,7 @@ func (s *NatService) parseEntryDomain(entry NatCell) string {
 }
 
 func (s *NatService) applyScript(script string) {
-	slog.Info("nftables script", "script", script)
+	slog.Debug("nftables script", "script", script)
 	s.latestScript = script
 
 	scriptPath := filepath.Join(nftablesEtc, "nat-diy.nft")
