@@ -113,6 +113,7 @@ func (s *NatService) RefreshDomainMap() {
 		ip, err := getRemoteIP(str)
 		if err != nil {
 			slog.Error("RefreshDomainMap | Failed to resolve domain", "domain", str, "error", err)
+			s.domainMap[str] = ""
 			continue
 		}
 		if ip == s.domainMap[str] {
@@ -292,6 +293,9 @@ func (s *NatService) GenerateScript(config []NatCell) string {
 	for _, entry := range config {
 		entry.LocalIP = localIP
 		entry.DstIP = s.parseEntryDomain(entry)
+		if entry.DstIP == "" {
+			continue
+		}
 		slog.Debug("Generate Entry", "entry", entry)
 		script += entry.Build()
 	}
