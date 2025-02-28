@@ -38,7 +38,14 @@ mv nat-go /usr/local/bin/
 
 # 创建配置目录
 mkdir -p /etc/nat
+mkdir -p /etc/nat/cfg
 touch /etc/nat/.env
+touch /etc/nat/cfg/default.conf
+
+cat > /etc/nat/cfg/default.conf << 'EOL'
+# 本机:1234 -> 1.1.1.1:39000
+SINGLE,1234,39000,1.1.1.1
+EOL
 
 # 安装service文件
 cat > /etc/systemd/system/nat-go.service << 'EOL'
