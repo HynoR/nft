@@ -27,7 +27,7 @@ jobs:
       run: go test -v ./...
 
     - name: Upload artifacts  # 添加构建产物上传
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: binaries
         path: nat-go-*
@@ -40,7 +40,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')  # 仅在有 tag 时运行
     steps:
     - name: Download artifacts  # 下载构建产物
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: binaries
 
