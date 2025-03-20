@@ -21,6 +21,7 @@ type NatService struct {
 	latestScript   string
 	configPath     []string
 	TestMode       bool // testMode Only Generate nat script but not apply
+	SyncMode       bool // syncMode Only Sync global ip address
 	ConvertMode    bool // convertMode Only Convert iptables rules to nftables rules
 	GlobalLocalIP  string
 	needSyncSignal chan struct{}
@@ -199,6 +200,15 @@ func (s *NatService) WatchConfig() {
 
 func (s *NatService) Run() {
 	slog.Info("Starting NAT service", slog.Any("outbound ip", s.GlobalLocalIP))
+	if s.SyncMode {
+		s.Sync()
+		return
+	}
+
+	s.CoreService()
+}
+
+func (s *NatService) CoreService() {
 	// Initial sync
 	s.Sync()
 

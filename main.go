@@ -11,19 +11,8 @@ var (
 	testMode    bool
 	convertMode string
 	globalIp    string
+	syncMode    bool
 )
-
-// func useLogger(path string) {
-// 	logFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-// 	if err != nil {
-// 		slog.Error("Failed to open log file", "error", err, "path", path)
-// 		os.Exit(1)
-// 	}
-
-// 	// Create a new logger that writes to both stdout and file
-// 	logger := slog.New(slog.NewJSONHandler(io.MultiWriter(os.Stdout, logFile), nil))
-// 	slog.SetDefault(logger)
-// }
 
 func main() {
 	// Check command line arguments
@@ -32,6 +21,7 @@ func main() {
 	flag.BoolVar(&testMode, "t", false, "run in test mode")
 	flag.StringVar(&convertMode, "convert", "", "convert iptables rules to nftables rules")
 	flag.StringVar(&globalIp, "ip", "", "global ip address")
+	flag.BoolVar(&syncMode, "sync", false, "sync global ip address")
 	flag.Parse()
 
 	if configPath == "nat.conf" {
@@ -61,6 +51,12 @@ func main() {
 		service.TestMode = true
 		slog.Info("Running in test mode")
 	}
+
+	if syncMode {
+		service.SyncMode = true
+		slog.Info("Running in sync mode")
+	}
+
 	if convertMode != "" {
 		slog.Info("Running in convert mode", "convert", convertMode)
 		service.ConvertTask(configPath, convertMode)
