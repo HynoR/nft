@@ -139,9 +139,3 @@ echo "3. 设置开机自启: systemctl enable nat-go"
 echo "4. 检查服务状态: systemctl status nat-go"
 echo "5. 查看配置示例: cat /etc/nat/cfg/default.conf"
 
-# 提示IP转发状态
-if [ "$IP_FORWARD" -eq 0 ]; then
-    echo ""
-    echo "注意: 本脚本已启用并永久设置了IP转发功能(net.ipv4.ip_forward = 1)"
-    echo "这是NAT功能正常工作的必要设置"
-fi
