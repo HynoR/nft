@@ -201,7 +201,7 @@ func (s *NatService) WatchConfig() {
 func (s *NatService) Run() {
 	slog.Info("Starting NAT service", slog.Any("outbound ip", s.GlobalLocalIP))
 	if s.SyncMode {
-		s.Sync()
+		s.DownLoadFromRemote()
 		return
 	}
 

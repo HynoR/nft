@@ -131,7 +131,7 @@ systemctl daemon-reload
 # 清理临时目录
 rm -rf $TMP_DIR
 
-echo "安装完成!"
+echo "安装完成!
 echo "使用方法:"
 echo "1. 将配置文件放在 /etc/nat/cfg 目录下"
 echo "2. 启动服务: systemctl start nat-go"
