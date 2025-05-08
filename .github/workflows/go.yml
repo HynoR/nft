@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build and Test
-    runs-on: ubuntu-22.04 #ubuntu-latest
+    runs-on: ubuntu-20.04  # 使用较旧的Ubuntu版本，其glibc更兼容Debian 11
     strategy:
       matrix:
         architecture: [amd64, arm64]
@@ -23,9 +23,10 @@ jobs:
           go-version: '1.22.6'
           cache: true  # 启用Go依赖缓存
 
-      - name: Build
-        run: GOARCH=${{ matrix.architecture }} go build -ldflags="-s -w" -o nat-go-linux-${{ matrix.architecture }} -v ./...
-        # 如果构建有特定路径，请调整上面的命令
+      - name: Build with CGO disabled
+        run: |
+          # 禁用CGO以避免glibc依赖问题
+          CGO_ENABLED=0 GOARCH=${{ matrix.architecture }} go build -ldflags="-s -w" -o nat-go-linux-${{ matrix.architecture }} -v ./...
 
       - name: Test
         run: go test -v -race -covermode=atomic ./...
