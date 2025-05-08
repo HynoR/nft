@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build and Test
-    runs-on: ubuntu-20.04  # 使用较旧的Ubuntu版本，其glibc更兼容Debian 11
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         architecture: [amd64, arm64]
