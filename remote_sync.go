@@ -113,17 +113,9 @@ func downloadAndUpdateFile(client *http.Client, path, remoteURL string) {
 	// 追加同步时间
 	remoteContent = append(remoteContent, []byte("\n# @Synced="+time.Now().Format(time.RFC3339)+"\n")...)
 
-	// 使用临时文件进行原子写入，避免写入失败导致的文件损坏
-	tempFile := path + ".tmp"
-	if err := os.WriteFile(tempFile, remoteContent, 0644); err != nil {
-		slog.Error("Failed to write to temporary file", "path", tempFile, "error", err)
-		return
-	}
-
-	// 原子替换文件
-	if err := os.Rename(tempFile, path); err != nil {
-		slog.Error("Failed to replace original file", "path", path, "error", err)
-		os.Remove(tempFile) // 清理临时文件
+	// 直接写入原文件，避免替换文件导致的 inotify 失效
+	if err := os.WriteFile(path, remoteContent, 0644); err != nil {
+		slog.Error("Failed to write config file", "path", path, "error", err)
 		return
 	}
 

@@ -185,9 +185,16 @@ func (s *NatService) WatchConfig() {
 			if !ok {
 				return
 			}
-			if event.Op&fsnotify.Write == fsnotify.Write {
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename) != 0 {
 				slog.Info("Config file modified, Reload Config", "path", event.Name)
 				s.needSyncSignal <- struct{}{}
+			}
+
+			if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {
+				// 文件被替换后需要重新添加 Watcher
+				if err := s.watcher.Add(event.Name); err != nil {
+					slog.Error("Failed to re-add watcher", "path", event.Name, "error", err)
+				}
 			}
 		case err, ok := <-s.watcher.Errors:
 			if !ok {
